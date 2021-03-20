@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nlp-infotointell/performit-server.git"
+    "url": "git+https://github.com/IbrahimShamma99/nodejs-mssql-boilerplate.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/nlp-infotointell/performit-server/issues"
+    "url": "https://github.com/IbrahimShamma99/nodejs-mssql-boilerplate/issues"
   },
-  "homepage": "https://github.com/nlp-infotointell/performit-server#readme",
+  "homepage": "https://github.com/IbrahimShamma99/nodejs-mssql-boilerplate#readme",
   "dependencies": {
     "@sendgrid/mail": "^7.4.2",
     "bcrypt-nodejs": "0.0.3",
