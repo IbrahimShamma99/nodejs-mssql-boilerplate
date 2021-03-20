@@ -54,7 +54,7 @@ User.init(
     },
     admin: DataTypes.BOOLEAN,
   },
-  { sequelize, modelName: "performit_user" }
+  { sequelize, modelName: "user" }
 );
 
 (async () => {
@@ -150,6 +150,5 @@ User.prototype.toJSON = function toJSON() {
     disabled: this.disabled,
   };
 };
-
 
 module.exports = User;

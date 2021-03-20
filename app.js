@@ -18,7 +18,7 @@ app.use(
 app.use(api);
 
 app.get("/", (req, res) => {
-  res.send({ message: "performit server" });
+  res.send({ message: "node mssql server" });
 });
 
 app.all("*", function (req, res, next) {
