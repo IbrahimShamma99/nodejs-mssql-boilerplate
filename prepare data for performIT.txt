@@ -1,0 +1,423 @@
+creating [perform_total_sales_monthly]
+------------------------------------------- create SQL -------------------------------------------------------------------
+with combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+),
+temp as (
+SELECT  DATEADD(month, DATEDIFF(month, 0, d.VouDate), 0) as monthcutoff,
+       sum(qty)*-1 as Qty, sum(sell)*-1 as Sell,  count(distinct VouNo) as Transactions, count(itemno) as Items, 
+       sum(sell)*-1 / cast(count(distinct VouNo)as decimal(10,2))  as Avg_Transactions
+    FROM combine d
+group by DATEADD(month, DATEDIFF(month, 0, d.VouDate), 0)
+
+)
+
+Select FORMAT ([monthcutoff], 'MM-dd-yyyy') as month_startDate , datepart(year,monthcutoff) as cYear, datepart(month,monthcutoff) as cMonth, 
+Sell, Transactions, Items,  Avg_Transactions
+into perform_total_sales_monthly
+from temp
+order by monthcutoff
+----------------------------------------------------------------------------------------------------------------------------------
+
+creating  [perform_total_sales_weekly]
+with combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+),
+temp as (
+SELECT  DATEADD(dd, 7-(DATEPART(dw, d.VouDate)), d.VouDate) as weekcutoff,
+       sum(qty)*-1 as Qty, sum(sell)*-1 as Sell,  count(distinct VouNo) as Transactions, count(itemno) as Items, 
+       sum(sell)*-1 / cast(count(distinct VouNo)as decimal(10,2))  as Avg_Transactions
+    FROM combine d
+group by DATEADD(dd, 7-(DATEPART(dw, d.VouDate)), d.VouDate)
+
+)
+
+Select FORMAT ([weekcutoff], 'MM-dd-yyyy') as week_startDate , datepart(year,weekcutoff) as cYear, datepart(month,weekcutoff) as cMonth, datepart(week,weekcutoff) as cWeek,
+datename(dw,weekcutoff) as cDay,Qty,Sell, Transactions, Items,  Avg_Transactions
+into perform_total_sales_weekly
+from temp
+order by weekcutoff
+------------------------------------------------------------------------------------------------------------------------------
+create [perform_total_sales_monthly_items]
+
+with 
+combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+),
+
+products as (
+       select p.itemno, p.ItemDesc , c.categName, s.subcateg
+       from InvItemsMF p
+       left join InvCategCodes c
+       on p.compno=c.compno and p.categ=c.categ
+       left join Invt_SubCategInfo s
+       on p.compno=s.compno and p.categ=s.categ and p.subcateg=s.subcateg
+       where p.compno=1
+),
+
+temp as (
+SELECT d.ItemNo, DATEADD(month, DATEDIFF(month, 0, d.VouDate), 0) as monthcutoff,
+       sum(qty)*-1 as Qty, sum(sell)*-1 as Sell,  count(distinct VouNo) as Transactions, count(itemno) as Items, 
+       sum(sell)*-1 / cast(count(distinct VouNo)as decimal(10,2))  as Avg_Transactions
+    FROM combine d
+group by d.ItemNo, DATEADD(month, DATEDIFF(month, 0, d.VouDate), 0)
+
+)
+
+Select t.ItemNo, p.itemdesc, p.CategName, datepart(year,monthcutoff) as cYear, datepart(month,monthcutoff) as cMonth, 
+datename(dw,monthcutoff) as cDay,Qty,Sell, Transactions, Items,  Avg_Transactions
+into perform_total_sales_monthly_items
+from temp t
+left join products p
+on t.ItemNo=p.ItemNo
+order by monthcutoff
+
+----------------------------------------------------------------------------------------------------
+perform_total_sales_weekly_items
+
+
+with 
+combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+),
+
+products as (
+       select p.itemno, p.ItemDesc , c.categName, s.subcateg
+       from InvItemsMF p
+       left join InvCategCodes c
+       on p.compno=c.compno and p.categ=c.categ
+       left join Invt_SubCategInfo s
+       on p.compno=s.compno and p.categ=s.categ and p.subcateg=s.subcateg
+       where p.compno=1
+),
+
+temp as (
+SELECT d.ItemNo, DATEADD(dd, 7-(DATEPART(dw, d.VouDate)), d.VouDate)  as weekcutoff,
+       sum(qty)*-1 as Qty, sum(sell)*-1 as Sell,  count(distinct VouNo) as Transactions, count(itemno) as Items, 
+       sum(sell)*-1 / cast(count(distinct VouNo)as decimal(10,2))  as Avg_Transactions
+    FROM combine d
+group by d.ItemNo, DATEADD(dd, 7-(DATEPART(dw, d.VouDate)), d.VouDate)
+
+)
+
+Select t.ItemNo, p.itemdesc, p.CategName, datepart(year,weekcutoff) as cYear, datepart(month,weekcutoff) as cMonth, datepart(week,weekcutoff) as cWeek,
+datename(dw,weekcutoff) as cDay,Qty,Sell, Transactions, Items,  Avg_Transactions
+into perform_total_sales_weekly_items
+from temp t
+left join products p
+on t.ItemNo=p.ItemNo
+order by weekcutoff
+--------------------------------------------------------------------
+
+create the [perform_total_sales_daily_items]
+
+with 
+combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+),
+
+products as (
+       select p.itemno, p.ItemDesc , c.categName, s.subcateg
+       from InvItemsMF p
+       left join InvCategCodes c
+       on p.compno=c.compno and p.categ=c.categ
+       left join Invt_SubCategInfo s
+       on p.compno=s.compno and p.categ=s.categ and p.subcateg=s.subcateg
+       where p.compno=1
+),
+
+temp as (
+SELECT d.ItemNo,  d.VouDate as Daycutoff,
+       sum(qty)*-1 as Qty, sum(sell)*-1 as Sell,  count(distinct VouNo) as Transactions, count(itemno) as Items, 
+       sum(sell)*-1 / cast(count(distinct VouNo)as decimal(10,2))  as Avg_Transactions
+    FROM combine d
+group by d.ItemNo,  d.VouDate
+
+)
+
+Select t.ItemNo, p.itemdesc, p.CategName, Daycutoff, datepart(year,Daycutoff) as cYear, datepart(month,Daycutoff) as cMonth, datepart(week,Daycutoff) as cWeek,
+datename(dw,Daycutoff) as cDay,Qty,Sell, Transactions, Items,  Avg_Transactions
+into perform_total_sales_daily_items
+from temp t
+left join products p
+on t.ItemNo=p.ItemNo
+order by Daycutoff
+
+----------------------------------------------
+change to datetime type
+
+ALTER TABLE perform_total_sales_daily_items
+ALTER COLUMN cdate DATETIME
+
+ALTER TABLE perform_total_sales_monthly
+ALTER COLUMN month_startdate DATETIME
+
+
+---------------------- Create perform_all_data----------------------------------------
+with combine as (
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       left join [dbo].[InvHistoryHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+       union
+       SELECT  d.*, h.CustAcc
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       left join [dbo].[InvDailyHF] h
+       on d.CompNo=h.CompNo and d.VouNo=h.VouNo and d.Voutype=h.Voutype and d.StoreNo=h.StoreNo and d.VouYear=h.VouYear
+       where  d.compno=1  and d.VouType in (2,9)
+)
+
+ SELECT  d.*, c.name,i.ItemDesc, s.SalesmanNo, s.SalesmanName, T.[Desc] as Cust_Type, G.ArName as Cust_Group
+       , case when ItemSer=1 then 1 else 0 end as visits_current
+       into perform_all_data
+    FROM combine d
+       left join [dbo].[Customer] C
+       on d.CustAcc=c.Number and d.CompNo=c.Comp
+    left join [dbo].[Salesman] S
+       on c.Salseman=s.SalesmanNo and c.Comp=s.CompNo
+       left join [dbo].CustType T
+       on C.kind=T.type and C.Comp=T.Comp
+       left join [dbo].AR_CustomerSettlementGroups g
+       on c.comp=g.CompNo and c.SettlementGroup=g.id
+LEFT JOIN invitemsMF I
+on d.ItemNo = i.ItemNo
+----------------------------------------------------------------create returns view  [perform_returns_view]  ----------------------
+SELECT TOP (100) PERCENT CompNo, VouYear, VouType, VouNo, StoreNo, ItemNo, Batch, ItemDimension, ItemSer, format(VouDate, 'MM-dd-yyyy') AS Expr1, Categ, Qty, Qty2, Bonus, TUnit, Sell, Discount, PerDiscount, VouDiscount, Cost, CurrNo, 
+                  ForUCost, ToStoreNo, ToBatch, AccDepNo, AccNo, Item_Tax_Per, Item_Tax_Val, Item_STax_Per, Item_STax_Val, Item_Tax_Type, Item_STax_Type, Item_PTax_Per, Item_PTax_Val, Item_PTax_Type, ProdOrderNo, ExRate, UnitSerial, 
+                  RndDisc, AdditionalCost, NetSellValueBouns, PostDate, NoteDet, CommPer, CustAcc, visits, name, ItemDesc, SalesmanNo, SalesmanName, Cust_Type, Cust_Group, visits_current, Sell - Cost AS profit, Format((Sell - Cost) / NULLIF (Cost, 0), 
+                  '0.0%') AS profit_per, DATENAME(month, VouDate) AS month_name, DATENAME(weekday, VouDate) AS week_day_name, DATENAME(QUARTER, VouDate) AS QUARTER, DATENAME(day, VouDate) AS sell_day
+FROM     dbo.perform_all_data
+WHERE  (Sell > 0)
+----------------------------------------------------------------create sell view  [perform_sales_view]  ----------------------
+SELECT TOP (100) PERCENT CompNo, VouYear, VouType, VouNo, StoreNo, ItemNo, Batch, ItemDimension, ItemSer, format(VouDate, 'MM-dd-yyyy') AS Expr1, Categ, Qty, Qty2, Bonus, TUnit, Sell, Discount, PerDiscount, VouDiscount, Cost, CurrNo, 
+                  ForUCost, ToStoreNo, ToBatch, AccDepNo, AccNo, Item_Tax_Per, Item_Tax_Val, Item_STax_Per, Item_STax_Val, Item_Tax_Type, Item_STax_Type, Item_PTax_Per, Item_PTax_Val, Item_PTax_Type, ProdOrderNo, ExRate, UnitSerial, 
+                  RndDisc, AdditionalCost, NetSellValueBouns, PostDate, NoteDet, CommPer, CustAcc, visits, name, ItemDesc, SalesmanNo, SalesmanName, Cust_Type, Cust_Group, visits_current, Sell - Cost AS profit, Format((Sell - Cost) / NULLIF (Cost, 0), 
+                  '0.0%') AS profit_per, DATENAME(month, VouDate) AS month_name, DATENAME(weekday, VouDate) AS week_day_name, DATENAME(QUARTER, VouDate) AS QUARTER, DATENAME(day, VouDate) AS sell_day
+FROM     dbo.perform_all_data
+WHERE  (Sell < 0)
+-------------------------------------------------------------------------- [perform_net_sales_view]
+SELECT TOP (100) PERCENT CompNo, VouYear, VouType, VouNo, StoreNo, ItemNo, Batch, ItemDimension, ItemSer, format(VouDate, 'MM-dd-yyyy') AS Expr1, Categ, Qty, Qty2, Bonus, TUnit, Sell, Discount, PerDiscount, VouDiscount, Cost, CurrNo, 
+                  ForUCost, ToStoreNo, ToBatch, AccDepNo, AccNo, Item_Tax_Per, Item_Tax_Val, Item_STax_Per, Item_STax_Val, Item_Tax_Type, Item_STax_Type, Item_PTax_Per, Item_PTax_Val, Item_PTax_Type, ProdOrderNo, ExRate, UnitSerial, 
+                  RndDisc, AdditionalCost, NetSellValueBouns, PostDate, NoteDet, CommPer, CustAcc, visits, name, ItemDesc, SalesmanNo, SalesmanName, Cust_Type, Cust_Group, visits_current, Sell - Cost AS profit, Format((Sell - Cost) / NULLIF (Cost, 0), 
+                  '0.0%') AS profit_per, DATENAME(month, VouDate) AS month_name, DATENAME(weekday, VouDate) AS week_day_name, DATENAME(QUARTER, VouDate) AS QUARTER, DATENAME(day, VouDate) AS sell_day
+FROM     dbo.perform_all_data
+
+---------------------------------------------------------------------------- create [perform_items_store_balanc] ---------------------------------------------------
+with 
+combine as (
+       SELECT  d.*
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvHistoryDF] d
+       where  d.compno=1  --and d.VouType in (0,1,3,5,6,10,11,12)
+       union
+       SELECT  d.*
+       , case when ItemSer=1 then 1 else 0 end as visits
+    FROM [dbo].[InvDailyDF] d
+       where  d.compno=1  --and d.VouType in (0,1,3,5,6,10,11,12)
+),
+
+products as (
+       select p.itemno, p.ItemDesc , c.categName, s.subcateg
+       from InvItemsMF p
+       left join InvCategCodes c
+       on p.compno=c.compno and p.categ=c.categ
+       left join Invt_SubCategInfo s
+       on p.compno=s.compno and p.categ=s.categ and p.subcateg=s.subcateg
+       where p.compno=1
+),
+temp as (
+select d.ItemNo, StoreNo, itemdesc, voudate, sum(Qty) as Qty
+from combine d
+left join products p
+on d.ItemNo=p.ItemNo
+
+where  storeno in (300,400,404,100,101,200,210)
+       group by StoreNo, d.ItemNo, itemdesc, voudate
+
+)
+
+, temp2 as (
+Select ItemNo, itemdesc, datepart(year,voudate) as cYear, datepart(month,voudate) as cMonth
+,sum(case when StoreNo=300 and qty<>0 then Qty else null end) as S_300
+,sum(case when StoreNo=400 and qty<>0 then Qty else null end) as S_400
+,sum(case when StoreNo=404 and qty<>0 then Qty else null end) as S_404
+,sum(case when StoreNo=100 and qty<>0 then Qty else null end) as S_100
+,sum(case when StoreNo=101 and qty<>0 then Qty else null end) as S_101
+,sum(case when StoreNo=200 and qty<>0 then Qty else null end) as S_200
+,sum(case when StoreNo=210 and qty<>0 then Qty else null end) as S_210
+from temp
+      group by ItemNo, itemdesc, datepart(year,voudate) , datepart(month,voudate)
+)
+
+Select ItemNo, itemdesc, cYear, cMonth
+
+,sum(S_300) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_300_Cum
+,sum(S_400) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_400_Cum
+,sum(S_404) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_404_Cum
+,isnull(sum(S_300) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) + 
+ isnull(sum(S_400) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) +
+isnull(sum(S_404) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) as Product_Total_Cum
+,sum(S_100) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_100_Cum
+,sum(S_101) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_101_Cum
+,sum(S_200) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_200_Cum
+,sum(S_210) over (partition by itemno order by itemno,itemdesc, cYear, cMonth) as S_210_Cum
+,isnull(sum(S_100) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) + 
+ isnull(sum(S_101) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) +
+isnull(sum(S_200) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) +
+isnull(sum(S_210) over (partition by itemno order by itemno,itemdesc, cYear, cMonth),0) as Material_Total_Cum
+INTO  perform_items_store_balance
+from temp2
+       order by  ItemNo, itemdesc, cYear, cMonth
+	  
+
+
+--------------------- update to float 
+  update [dbo].[perform_items_store_balance]
+    set [S_300_Cum] = try_convert(float, [S_300_Cum]),
+     [S_400_Cum] = try_convert(float, [S_400_Cum]),
+     [S_404_Cum] = try_convert(float, [S_404_Cum]),
+     [S_100_Cum] = try_convert(float, [S_100_Cum]),
+     [S_101_Cum] = try_convert(float, [S_101_Cum]),
+     [S_200_Cum] = try_convert(float, [S_200_Cum]),
+     [S_210_Cum] = try_convert(float, [S_210_Cum])
+alter table [dbo].[perform_items_store_balance] alter column S_300_Cum float;
+alter table [dbo].[perform_items_store_balance] alter column [S_404_Cum]  float;
+alter table [dbo].[perform_items_store_balance] alter column [S_100_Cum]   float;
+alter table [dbo].[perform_items_store_balance] alter column [S_101_Cum]    float;
+alter table [dbo].[perform_items_store_balance] alter column [S_200_Cum]     float;
+alter table [dbo].[perform_items_store_balance] alter column [S_210_Cum]      float;
+alter table [dbo].[perform_items_store_balance] alter column Product_Total_Cum     float;
+alter table [dbo].[perform_items_store_balance] alter column Material_Total_Cum     float;
+
+
+
+
+CREATE TABLE [performit_companies]
+(
+    [company_id] INTEGER NOT NULL IDENTITY(1,1) ,
+    [company_name] NVARCHAR(255) NULL,
+    [address] NVARCHAR(255) NULL,
+    [logo] NVARCHAR(255) NULL,
+    [language] NVARCHAR(255) NULL,
+    [connection_string] NVARCHAR(255) NULL,
+    [connection_host] NVARCHAR(255) NULL,
+    [connection_port] NVARCHAR(255) NULL,
+    [connection_username] NVARCHAR(255) NULL,
+    [connection_password] NVARCHAR(255) NULL,
+    [database_type] NVARCHAR(255) NULL,
+    [createdAt] DATETIMEOFFSET NOT NULL,
+    [updatedAt] DATETIMEOFFSET NOT NULL,
+    PRIMARY KEY ([company_id])
+);
+
+CREATE TABLE [performit_users]
+(
+    [user_id] INTEGER NOT NULL IDENTITY(1,1) ,
+    [email] NVARCHAR(255) NOT NULL UNIQUE ,
+    [salt] NVARCHAR(4000) NULL,
+    [hash] NVARCHAR(4000) NULL,
+    [email_verification] BIT DEFAULT 0,
+    [name] NVARCHAR(255) NULL,
+    [admin] BIT NULL,
+    [disabled] BIT DEFAULT 0,
+    [title] NVARCHAR(255) NULL,
+    [department] NVARCHAR(255) NULL,
+    [mobile] NVARCHAR(255) NULL,
+    [langauge] NVARCHAR(255) NULL,
+    [photo] NVARCHAR(255) NULL,
+    [reset] BIT DEFAULT 0,
+    [createdAt] DATETIMEOFFSET NOT NULL,
+    [updatedAt] DATETIMEOFFSET NOT NULL,
+    [company_id] INTEGER NULL,
+    PRIMARY KEY ([user_id], [email]),
+    FOREIGN KEY ([company_id]) REFERENCES [performit_companies] ([company_id]) ON DELETE SET NULL
+);
+
+CREATE TABLE [performit_favorites]
+(
+    [favorite_id] INTEGER NOT NULL IDENTITY(1,1) ,
+    [name] NVARCHAR(255) NULL,
+    [createdAt] DATETIMEOFFSET NOT NULL,
+    [updatedAt] DATETIMEOFFSET NOT NULL,
+    [user_id] INTEGER NULL,
+    PRIMARY KEY ([favorite_id])
+);
+
+CREATE TABLE [performit_recents]
+(
+    [recent_id] INTEGER NOT NULL IDENTITY(1,1) ,
+    [name] NVARCHAR(255) NULL,
+    [createdAt] DATETIMEOFFSET NOT NULL,
+    [updatedAt] DATETIMEOFFSET NOT NULL,
+    [user_id] INTEGER NULL,
+    PRIMARY KEY ([recent_id])
+);
+
+
+
+
+
+
