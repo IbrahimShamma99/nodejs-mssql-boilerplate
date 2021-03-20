@@ -1,8 +1,8 @@
 const development = {
   database: {
-    username: "sa",
-    dbname: "performit",
-    password: "1P@ssw0rd",
+    username: process.env.DBUSERNAME,
+    dbname: process.env.DBNAME,
+    password: process.env.DBPASSWORD,
     host: process.env.PGHOST || "localhost",
     port: process.env.PGPORT || 5432,
     dialect: "mssql",
