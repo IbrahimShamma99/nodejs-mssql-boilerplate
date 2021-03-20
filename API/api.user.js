@@ -1,7 +1,6 @@
 const router = require("express").Router();
 const controlers = require("../controlers/controlers.user");
 const utils = require("../Utils/utils.user");
-const companyUtils = require("../Utils/utils.company");
 const { validate, contactUS } = require("../Utils/utils");
 const { params, methods } = require("../Params/params.user");
 const { Routes } = require("../Routes/routes.user");
@@ -29,7 +28,6 @@ router.post(
   utils.authenticatePassword,
   utils.checkEmailVerification,
   utils.checkIfDisabled,
-  companyUtils.findUserCompany,
   controlers.login
 );
 

@@ -1,10 +1,8 @@
 //SECTION DB
 const sequelize = require("../db");
 const { DataTypes, Model } = require("sequelize");
-const Company = require("./Company");
 //SECTION AUTH
 const crypto = require("crypto");
-const saltRounds = 10;
 const jwt = require("jsonwebtoken");
 const secret = require("../config/appConfig").secret;
 //SECTION MAILING
@@ -153,6 +151,5 @@ User.prototype.toJSON = function toJSON() {
   };
 };
 
-User.belongsTo(Company, { foreignKey: "company_id" });
 
 module.exports = User;

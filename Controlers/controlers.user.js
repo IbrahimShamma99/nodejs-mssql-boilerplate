@@ -1,5 +1,4 @@
 const User = require("../Models/User");
-const Company = require("../Models/Company");
 
 const get = (req, res) => {
   const user = req.user;
@@ -7,30 +6,26 @@ const get = (req, res) => {
 };
 
 const register = async (req, res) => {
-  Company.create({
-    company_name: req.body.company_name,
-  }).then((company) => {
-    User.create({
-      email: req.body.email,
-      title: req.body.title,
-      department: req.body.department,
-      name: req.body.username,
-      company_id: company.company_id,
-      admin: true,
-      email_verification: false,
+  User.create({
+    email: req.body.email,
+    title: req.body.title,
+    department: req.body.department,
+    name: req.body.username,
+    company_id: company.company_id,
+    admin: true,
+    email_verification: false,
+  })
+    .then(async (user) => {
+      user.setPassword(req.body.password);
+      await user.save();
+      res
+        .status(201)
+        .send({ message: "registeration successful verify you email" });
     })
-      .then(async (user) => {
-        user.setPassword(req.body.password);
-        await user.save();
-        res
-          .status(201)
-          .send({ message: "registeration successful verify you email" });
-      })
-      .catch((error) => {
-        console.log(error);
-        res.status(400).send(error);
-      });
-  });
+    .catch((error) => {
+      console.log(error);
+      res.status(400).send(error);
+    });
 };
 
 const login = async (req, res) => {
