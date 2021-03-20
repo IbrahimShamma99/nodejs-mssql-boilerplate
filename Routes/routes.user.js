@@ -9,7 +9,6 @@ const Routes = {
   password: "/new-password",
   userEmail: "/user/email/:email",
   userId: "/user/id/:user_id",
-  userCompany: "/user/company",
 };
 
 module.exports = { Routes };
